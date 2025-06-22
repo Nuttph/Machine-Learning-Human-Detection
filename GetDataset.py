@@ -2,24 +2,17 @@ import cv2
 import mediapipe as mp
 import csv
 import os
-
-# Label ของชุดข้อมูล (เปลี่ยนตามต้องการ)
 label = "hello"
 
-# เตรียมไฟล์ CSV
 os.makedirs("dataset", exist_ok=True)
 csv_path = os.path.join("dataset", f"dataset_{label}.csv")
-
 write_header = not os.path.exists(csv_path)
-
-# Init MediaPipe modules
 mp_hands = mp.solutions.hands.Hands(static_image_mode=False, max_num_hands=2)
 mp_pose = mp.solutions.pose.Pose(static_image_mode=False, min_detection_confidence=0.5)
 mp_face_mesh = mp.solutions.face_mesh.FaceMesh(static_image_mode=False, max_num_faces=1)
 
 mp_drawing = mp.solutions.drawing_utils
 
-# Landmark ที่ต้องการเก็บ
 POSE_LANDMARKS_TO_SHOW = [
     mp.solutions.pose.PoseLandmark.LEFT_SHOULDER,
     mp.solutions.pose.PoseLandmark.LEFT_ELBOW,
@@ -41,10 +34,9 @@ FACE_LANDMARKS_TO_SHOW = {
     "right_ear": 454,
 }
 
-# สร้าง header
 def create_header():
     header = []
-    for i in range(2):  # มือ 2 ข้าง
+    for i in range(2):
         for j in range(21):
             header += [f'hand{i}_{j}_x', f'hand{i}_{j}_y', f'hand{i}_{j}_z']
     for lm_id in POSE_LANDMARKS_TO_SHOW:
@@ -54,9 +46,7 @@ def create_header():
     header.append('label')
     return header
 
-# Start capture
 cap = cv2.VideoCapture(0)
-
 with open(csv_path, 'a', newline='') as f:
     writer = csv.writer(f)
     if write_header:
@@ -79,7 +69,6 @@ with open(csv_path, 'a', newline='') as f:
         h, w, _ = frame.shape
         row = []
 
-        # ======= Draw + Save Hand =======
         if hands_results.multi_hand_landmarks:
             for hand_idx in range(2):
                 if hand_idx < len(hands_results.multi_hand_landmarks):
@@ -92,29 +81,26 @@ with open(csv_path, 'a', newline='') as f:
         else:
             row.extend([-1, -1, -1]*21*2)
 
-        # ======= Draw + Save Pose (arm 6 points) =======
         if pose_results.pose_landmarks:
             for lm_id in POSE_LANDMARKS_TO_SHOW:
                 lm = pose_results.pose_landmarks.landmark[lm_id]
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                cv2.circle(frame, (cx, cy), 7, (0, 0, 255), cv2.FILLED)  # red
+                cv2.circle(frame, (cx, cy), 7, (0, 0, 255), cv2.FILLED)
                 row.extend([lm.x, lm.y, lm.z])
         else:
             row.extend([-1, -1, -1]*len(POSE_LANDMARKS_TO_SHOW))
 
-        # ======= Draw + Save Face =======
         if face_results.multi_face_landmarks:
             face_landmarks = face_results.multi_face_landmarks[0]
             for name, idx in FACE_LANDMARKS_TO_SHOW.items():
                 lm = face_landmarks.landmark[idx]
                 cx, cy = int(lm.x * w), int(lm.y * h)
-                cv2.circle(frame, (cx, cy), 5, (255, 0, 0), cv2.FILLED)  # blue
+                cv2.circle(frame, (cx, cy), 5, (255, 0, 0), cv2.FILLED)
                 cv2.putText(frame, name, (cx + 5, cy - 5), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 0), 1)
                 row.extend([lm.x, lm.y, lm.z])
         else:
             row.extend([-1, -1, -1]*len(FACE_LANDMARKS_TO_SHOW))
 
-        # แสดงคำสั่ง
         cv2.putText(frame, "Press 's' to save, 'q' to quit", (10, 30),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
 
